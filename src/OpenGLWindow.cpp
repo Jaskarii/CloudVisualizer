@@ -5,53 +5,180 @@ glm::mat4 view = glm::mat4(1.0f);
 glm::mat4 MVP;
 glm::mat4 model = glm::mat4(1.0f); // Initialize to identity matrix
 
+float left = -50.0f;
+float right = 50.0f;
+float bottom = -50.0f;
+float top = 50.0f;
+float depth = -100.0f;
+float near = 100.0f;
+float scale = 1.0f;
+
+bool leftMouseButtonPressed = false;
+bool middleMouseButtonPressed = false;
+double lastX = 0.0;
+double lastY = 0.0;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
     glfwGetFramebufferSize(window, &width, &height);
-
-    float fov = 45.0f;
     float aspectRatio = (float)width / (float)height;
-    float nearPlane = 0.1f;
-    float farPlane = 200.0f;
-    proj = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
+    // Create an orthographic projection that maps the world coordinates to the window dimensions
+    proj = glm::ortho(scale*left, scale*right, scale*bottom / aspectRatio, scale*top / aspectRatio, scale*depth, scale*near);
     MVP = proj * view * model;
 
-	glViewport(0, 0, width, height);
+    glViewport(0, 0, width, height);
+}
+
+void initCamera()
+{
+    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 targetPos = glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 upVector = glm::vec3(0.0f, 0.0f, 1.0f);
+
+    view = glm::lookAt(cameraPos, targetPos, upVector);
+}
+
+void cursorPositionCallback(GLFWwindow *window, double xpos, double ypos)
+{
+    if (leftMouseButtonPressed)
+    {
+        // Calculate the change in mouse position
+        double deltaX = xpos - lastX;
+        double deltaY = ypos - lastY;
+
+        // Update last mouse position
+        lastX = xpos;
+        lastY = ypos;
+
+        // Set sensitivity for rotation
+        float sensitivity = 0.01f;
+
+        // Perform rotation based on mouse movement
+        view = glm::rotate(view, (float)deltaX * sensitivity, glm::vec3(0.0f, 0.0f, 1.0f)); // Rotate around z-axis
+        view = glm::rotate(view, (float)deltaY * sensitivity, glm::vec3(1.0f, 0.0f, 0.0f)); // Rotate around x-axis
+
+        // Recalculate MVP matrix
+        MVP = proj * view * model;
+    }
+    else if (middleMouseButtonPressed)
+    {
+        // Calculate the change in mouse position
+        double deltaX = xpos - lastX;
+        double deltaY = ypos - lastY;
+
+        // Update last mouse position
+        lastX = xpos;
+        lastY = ypos;
+
+        // Set sensitivity for panning
+        float sensitivity = 0.02f;
+
+        // Perform translation based on mouse movement
+        view = glm::translate(view, glm::vec3((float)deltaX * sensitivity, -(float)deltaY * sensitivity, 0.0f));
+
+        // Recalculate MVP matrix
+        MVP = proj * view * model;
+    }
 }
 
 void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 {
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
-	{
-		double xpos, ypos;
-		glfwGetCursorPos(window, &xpos, &ypos);
-		int width, height;
-		glfwGetFramebufferSize(window, &width, &height);
-		float fwidth = (float)width;
-		float fheight = (float)height;
-		ypos = height - ypos;
-		// Convert cursor position to OpenGL normalized coordinates
-		// road->SetNewPath(Vector2(xpos, ypos));
-	}
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+    {
+        if (action == GLFW_PRESS)
+        {
+            leftMouseButtonPressed = true;
+            glfwGetCursorPos(window, &lastX, &lastY);
+        }
+        else if (action == GLFW_RELEASE)
+        {
+            leftMouseButtonPressed = false;
+        }
+    }
+    else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+    {
+        if (action == GLFW_PRESS)
+        {
+            middleMouseButtonPressed = true;
+            glfwGetCursorPos(window, &lastX, &lastY);
+        }
+        else if (action == GLFW_RELEASE)
+        {
+            middleMouseButtonPressed = false;
+        }
+    }
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
-    float fov = 45.0f; // This should be a global variable or a member of your class
-    fov -= yoffset; // Zoom out when scrolling up, zoom in when scrolling down
-    fov = glm::clamp(fov, 1.0f, 45.0f); // Limit the fov between 1 and 45 degrees
+    float zoomSpeed = 0.1f;
+    scale += yoffset * zoomSpeed; // Zoom in when scrolling up, zoom out when scrolling down
+    scale = glm::clamp(scale, 0.1f, 10.0f); // Limit the scale between 0.1 and 10
 
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     float aspectRatio = (float)width / (float)height;
-    float nearPlane = 0.1f;
-    float farPlane = 200.0f;
-    proj = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
+
+    // Adjust the orthographic projection based on the scale
+    proj = glm::ortho(scale*left, scale*right, scale*bottom / aspectRatio, scale*top / aspectRatio, scale*depth, scale*near);
     MVP = proj * view * model;
 }
 
-OpenGLWindow::OpenGLWindow(int width, int height, const char* title)
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+        bool altPressed = glfwGetKey(window, GLFW_KEY_LEFT_ALT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS;
+
+        switch (key)
+        {
+            case GLFW_KEY_SPACE:
+                initCamera();
+                break;
+            case GLFW_KEY_UP:
+                if (altPressed) {
+                    // Pan camera up
+                    view = glm::translate(view, glm::vec3(0.0f, 0.0f, 0.1f));
+                } else {
+                    // Rotate camera up (around the x-axis)
+                    view = glm::rotate(view, glm::radians(-1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                }
+                break;
+            case GLFW_KEY_DOWN:
+                if (altPressed) {
+                    // Pan camera down
+                    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -0.1f));
+                } else {
+                    // Rotate camera down (around the x-axis)
+                    view = glm::rotate(view, glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                }
+                break;
+            case GLFW_KEY_LEFT:
+                if (altPressed) {
+                    // Pan camera left
+                    view = glm::translate(view, glm::vec3(0.0f, -0.1f, 0.0f));
+                } else {
+                    // Rotate camera left (around the z-axis)
+                    view = glm::rotate(view, glm::radians(-1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+                }
+                break;
+            case GLFW_KEY_RIGHT:
+                if (altPressed) {
+                    // Pan camera right
+                    view = glm::translate(view, glm::vec3(0.0f, 0.1f, 0.0f));
+                } else {
+                    // Rotate camera right (around the z-axis)
+                    view = glm::rotate(view, glm::radians(1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+                }
+                break;
+            default:
+                break;
+        }
+        MVP = proj * view * model;
+    }
+}
+
+OpenGLWindow::OpenGLWindow(int width, int height, const char *title)
 {
     // Initialize GLFW
     if (!glfwInit())
@@ -64,34 +191,25 @@ OpenGLWindow::OpenGLWindow(int width, int height, const char* title)
     window = glfwCreateWindow(width, height, title, nullptr, nullptr);
     if (!window)
     {
-		glfwTerminate();
-		return;
+        glfwTerminate();
+        return;
     }
 
-    float fov = 45.0f;
-    float aspectRatio = (float)width / (float)height;
-    float nearPlane = 0.1f;
-    float farPlane = 200.0f;
-    proj = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
 
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 20.0f);
-    glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 upVector = glm::vec3(0.0f, 1.0f, 0.0f);
-    view = glm::lookAt(cameraPos, cameraTarget, upVector);
-
-    MVP = proj * view * model;
-
+    initCamera();
     // Make the window's context current
     makeContextCurrent();
     gladLoadGL();
     glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetMouseButtonCallback(window, mouseButtonCallback);
     glfwSetScrollCallback(window, scroll_callback);
-	int windowWidth, windowHeight;
-	glfwGetFramebufferSize(window, &windowWidth, &windowHeight);
-	glViewport(0, 0, windowWidth, windowHeight);
+    glfwSetCursorPosCallback(window, cursorPositionCallback); // Register cursor position callback
+    glfwSetMouseButtonCallback(window, mouseButtonCallback);
+    glfwSetKeyCallback(window, keyCallback);
+    int windowWidth, windowHeight;
+    glfwGetFramebufferSize(window, &windowWidth, &windowHeight);
+    glViewport(0, 0, windowWidth, windowHeight);
 }
 
 OpenGLWindow::~OpenGLWindow()
@@ -104,14 +222,15 @@ OpenGLWindow::~OpenGLWindow()
 }
 
 bool OpenGLWindow::PreRender()
-{   
+{
     if (shouldClose())
-	{
-		return false;
-	}
+    {
+        return false;
+    }
 
     glfwSwapBuffers(window);
-	glfwPollEvents();
+    glfwPollEvents();
+    return true;
 }
 
 void OpenGLWindow::makeContextCurrent()
@@ -119,7 +238,6 @@ void OpenGLWindow::makeContextCurrent()
     // Make the window's context current
     glfwMakeContextCurrent(window);
 }
-
 
 bool OpenGLWindow::shouldClose()
 {
@@ -136,7 +254,7 @@ void OpenGLWindow::setShouldClose(bool shouldClose)
 void OpenGLWindow::Close()
 {
     glfwDestroyWindow(window);
-	glfwTerminate();
+    glfwTerminate();
 }
 
 glm::mat4 OpenGLWindow::getMVP()

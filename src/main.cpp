@@ -25,7 +25,7 @@ void checkGLError()
 	}
 }
 
-Point3D* points = new Point3D[100000];
+Point3D* points = new Point3D[200000];
 VertexBuffer *vb;
 std::vector<float> buffer;
 int packagesReceived = 0;
@@ -54,6 +54,7 @@ void onMessageReceived(const char* message, size_t size)
             points[i].x = buffer[i*3];
             points[i].y = buffer[i*3 + 1];
             points[i].z = buffer[i*3 + 2];
+            
             tempPointCount++;
         }
         // Update the vertex buffer
@@ -68,16 +69,16 @@ void onMessageReceived(const char* message, size_t size)
     }
     // Interpret the message as a series of uint32_t
     const uint32_t* uintArray = reinterpret_cast<const uint32_t*>(message);
-
-    // Calculate the number of points in the message
-    int pointCount = size / sizeof(float);
+    int count = 0;
 
     // Convert the data from network byte order to host byte order and add the points to the buffer
-    for (int i = 0; i < pointCount; i++) 
+    for (int i = 0; i < size/4; i++) 
     {
         uint32_t hostByteOrderData = ntohl(uintArray[i]);
         float hostByteOrderFloat = *reinterpret_cast<float*>(&hostByteOrderData);
+        
         buffer.push_back(hostByteOrderFloat);
+        count++;
     }
 }
 

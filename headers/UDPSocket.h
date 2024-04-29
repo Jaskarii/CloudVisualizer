@@ -17,6 +17,7 @@ class UDPSocket
 public:
     UDPSocket(MessageReceivedCallback callback);
     ~UDPSocket();
+    void sendMessage(const std::string& message);
 
 private:
     int sockfd;

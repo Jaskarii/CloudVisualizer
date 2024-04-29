@@ -14,11 +14,13 @@ include_directories(
 
 add_library(glad glad.c)
 
+# Gather all ImGui source files
+file(GLOB IMGUI_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/headers/ImGui/*.cpp)
 file(GLOB SOURCES "src/*.cpp")
 file(GLOB SHADER_FILES "${SHADER_DIR}/*.glsl")
 file(COPY ${SHADER_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/shaders)
 
-add_executable(MyOpenGLApp ${SOURCES})
+add_executable(MyOpenGLApp ${SOURCES} ${IMGUI_SOURCES})
 
 target_link_libraries(MyOpenGLApp
     glad  # Example for linking against OpenGL

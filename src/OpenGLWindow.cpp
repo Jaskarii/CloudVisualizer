@@ -5,6 +5,8 @@ glm::mat4 view = glm::mat4(1.0f);
 glm::mat4 MVP;
 glm::mat4 model = glm::mat4(1.0f); // Initialize to identity matrix
 
+
+
 float left = -50.0f;
 float right = 50.0f;
 float bottom = -50.0f;
@@ -195,7 +197,6 @@ OpenGLWindow::OpenGLWindow(int width, int height, const char *title)
         return;
     }
 
-
     initCamera();
     // Make the window's context current
     makeContextCurrent();
@@ -260,6 +261,11 @@ void OpenGLWindow::Close()
 glm::mat4 OpenGLWindow::getMVP()
 {
     return MVP;
+}
+
+GLFWwindow* OpenGLWindow::GetWindow()
+{
+    return window;
 }
 
 int OpenGLWindow::getWidth()

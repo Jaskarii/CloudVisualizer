@@ -17,6 +17,7 @@ public:
     void setShouldClose(bool shouldClose);
     void Close();
     glm::mat4 getMVP();
+    GLFWwindow* GetWindow();
 
 
     int getWidth();

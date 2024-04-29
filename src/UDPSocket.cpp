@@ -12,19 +12,6 @@ UDPSocket::UDPSocket(MessageReceivedCallback callback)
         exit(EXIT_FAILURE);
     }
 
-    memset(&servaddr, 0, sizeof(servaddr));
-    memset(&cliaddr, 0, sizeof(cliaddr));
-
-    servaddr.sin_family = AF_INET; // IPv4
-    servaddr.sin_addr.s_addr = INADDR_ANY;
-    servaddr.sin_port = htons(PORT);
-
-    if (bind(sockfd, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0)
-    {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
-
     listener = std::thread(&UDPSocket::listenForMessages, this);
     listener.detach();
 }
@@ -34,17 +21,17 @@ UDPSocket::~UDPSocket()
     close(sockfd);
 }
 
-void UDPSocket::sendMessage(const std::string& message)
+void UDPSocket::sendMessage(const std::string& ip, const std::string& port, const std::string& message)
 {
     struct sockaddr_in destAddr;
     destAddr.sin_family = AF_INET;
-    destAddr.sin_port = htons(12000); // Set port number, in network byte order
-    destAddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Set loopback IP address
+    destAddr.sin_port = htons(std::atoi(port.c_str())); // Convert port string to integer
+    destAddr.sin_addr.s_addr = inet_addr(ip.c_str()); // Convert IP string to network format
 
     const char* cstr = message.c_str();
-    int len = sizeof(struct sockaddr_in); // Corrected length of destination address structure
+    size_t messageLength = strlen(cstr);
 
-    if (sendto(sockfd, cstr, strlen(cstr), 0, (const struct sockaddr*)&destAddr, len) == -1)
+    if (sendto(sockfd, cstr, messageLength, 0, (const struct sockaddr*)&destAddr, sizeof(destAddr)) == -1)
     {
         perror("message send failed");
         // Handle the error gracefully instead of exiting

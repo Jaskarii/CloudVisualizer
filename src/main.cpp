@@ -9,7 +9,8 @@
 #include <iostream>
 #include <ButtonHandler.h>
 
-#define PORT 8080
+char ipBuffer[256] = ""; // Buffer to hold ip
+char portBuffer[256] = ""; // Buffer to hold port
 
 struct Point3D
 {
@@ -25,7 +26,7 @@ void checkGLError()
     }
 }
 
-Point3D *points = new Point3D[200000];
+Point3D *points = new Point3D[3000000];
 VertexBuffer *vb;
 std::vector<float> buffer;
 int _pointCount = 0;
@@ -90,6 +91,8 @@ int main()
     ButtonHandler button1("SensorIntergrator");
     ButtonHandler button2("Graph");
     ButtonHandler button3("TreeDetection");
+    ButtonHandler button4("Stop");
+
     vb = new VertexBuffer(points, 100000 * sizeof(Point3D));
     VertexBufferLayout layout;
     layout.PushFloat(3);
@@ -119,27 +122,50 @@ int main()
         // Render your buttons
         button1.Render();
         button2.Render();
+        button3.Render();
+        button4.Render();
+
+        // InputText widget to capture text input
+        ImGui::InputText("Ip", ipBuffer, IM_ARRAYSIZE(ipBuffer));
+
+        // InputText widget to capture text input
+        ImGui::InputText("Port", portBuffer, IM_ARRAYSIZE(portBuffer));
 
         // Check if buttons were clicked
         if (button1.WasClicked())
         {
-            socket.sendMessage("START_SENSOR");
+            std::string ipString(ipBuffer);
+            std::string portString(portBuffer);
+            socket.sendMessage(ipString, portString,"SENSOR");
         }
-        if (button2.WasClicked())
+        else if (button2.WasClicked())
         {
-            int b = 0;
+            std::string ipString(ipBuffer);
+            std::string portString(portBuffer);
+            socket.sendMessage(ipString, portString,"GRAPH");
         }
-        if (button3.WasClicked())
+        else if (button3.WasClicked())
         {
-            int b = 0;
+            std::string ipString(ipBuffer);
+            std::string portString(portBuffer);
+            socket.sendMessage(ipString, portString,"TREE");
+        }
+        else if (button4.WasClicked())
+        {
+            std::string ipString(ipBuffer);
+            std::string portString(portBuffer);
+            socket.sendMessage(ipString, portString,"STOP");
         }
 
         // Render ImGui frame
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        window.PreRender();
-
+        if (!window.PreRender())
+        {
+            socket.~UDPSocket();
+            ButtonHandler::CleanupImGui();
+            break;
+        }
     }
     window.Close();
     return 0;

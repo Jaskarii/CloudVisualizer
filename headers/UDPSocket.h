@@ -6,7 +6,6 @@
 #include <cstring>
 #include <thread>
 
-#define PORT 8080
 #define MAXLINE 32000
 
 // Define the callback type
@@ -17,7 +16,7 @@ class UDPSocket
 public:
     UDPSocket(MessageReceivedCallback callback);
     ~UDPSocket();
-    void sendMessage(const std::string& message);
+    void sendMessage(const std::string& ip, const std::string& port, const std::string& message);
 
 private:
     int sockfd;

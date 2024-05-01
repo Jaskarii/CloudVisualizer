@@ -11,8 +11,8 @@ float left = -50.0f;
 float right = 50.0f;
 float bottom = -50.0f;
 float top = 50.0f;
-float depth = -100.0f;
-float near = 100.0f;
+float depth = -1000.0f;
+float near = 1000.0f;
 float scale = 1.0f;
 
 bool leftMouseButtonPressed = false;
@@ -33,8 +33,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
 void initCamera()
 {
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 targetPos = glm::vec3(1.0f, 0.0f, 0.0f);
+    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 10.0f);
+    glm::vec3 targetPos = glm::vec3(0.1f, 0.0f, 0.0f);
     glm::vec3 upVector = glm::vec3(0.0f, 0.0f, 1.0f);
 
     view = glm::lookAt(cameraPos, targetPos, upVector);
@@ -57,7 +57,7 @@ void cursorPositionCallback(GLFWwindow *window, double xpos, double ypos)
 
         // Perform rotation based on mouse movement
         view = glm::rotate(view, (float)deltaX * sensitivity, glm::vec3(0.0f, 0.0f, 1.0f)); // Rotate around z-axis
-        view = glm::rotate(view, (float)deltaY * sensitivity, glm::vec3(1.0f, 0.0f, 0.0f)); // Rotate around x-axis
+        view = glm::rotate(view, (float)deltaY * sensitivity, glm::vec3(0.0f, 1.0f, 0.0f)); // Rotate around x-axis
 
         // Recalculate MVP matrix
         MVP = proj * view * model;
@@ -140,7 +140,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             case GLFW_KEY_UP:
                 if (altPressed) {
                     // Pan camera up
-                    view = glm::translate(view, glm::vec3(0.0f, 0.0f, 0.1f));
+                    view = glm::translate(view, glm::vec3(0.0f, 0.0f, 0.5f));
                 } else {
                     // Rotate camera up (around the x-axis)
                     view = glm::rotate(view, glm::radians(-1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -149,7 +149,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             case GLFW_KEY_DOWN:
                 if (altPressed) {
                     // Pan camera down
-                    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -0.1f));
+                    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -0.5f));
                 } else {
                     // Rotate camera down (around the x-axis)
                     view = glm::rotate(view, glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -158,7 +158,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             case GLFW_KEY_LEFT:
                 if (altPressed) {
                     // Pan camera left
-                    view = glm::translate(view, glm::vec3(0.0f, -0.1f, 0.0f));
+                    view = glm::translate(view, glm::vec3(0.0f, -0.5f, 0.0f));
                 } else {
                     // Rotate camera left (around the z-axis)
                     view = glm::rotate(view, glm::radians(-1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -167,7 +167,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             case GLFW_KEY_RIGHT:
                 if (altPressed) {
                     // Pan camera right
-                    view = glm::translate(view, glm::vec3(0.0f, 0.1f, 0.0f));
+                    view = glm::translate(view, glm::vec3(0.0f, 0.5f, 0.0f));
                 } else {
                     // Rotate camera right (around the z-axis)
                     view = glm::rotate(view, glm::radians(1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
@@ -202,6 +202,7 @@ OpenGLWindow::OpenGLWindow(int width, int height, const char *title)
     makeContextCurrent();
     gladLoadGL();
     glEnable(GL_BLEND);
+    glLineWidth(4.0f); // Set the line width to 2.0
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetScrollCallback(window, scroll_callback);

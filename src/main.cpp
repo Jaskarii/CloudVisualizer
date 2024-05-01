@@ -8,14 +8,12 @@
 #include <Vertexarray.h>
 #include <iostream>
 #include <ButtonHandler.h>
+#include "MessageParser.h"
+
+using namespace MessageParser;
 
 char ipBuffer[256] = ""; // Buffer to hold ip
 char portBuffer[256] = ""; // Buffer to hold port
-
-struct Point3D
-{
-    float x, y, z;
-};
 
 void checkGLError()
 {
@@ -26,59 +24,52 @@ void checkGLError()
     }
 }
 
-Point3D *points = new Point3D[3000000];
+Point3D *points = new Point3D[5000000];
+Point2D *tree_points = new Point2D[5000];
+
 VertexBuffer *vb;
-std::vector<float> buffer;
+VertexBuffer *treeVB;
+std::vector<float> pointBuffer;
 int _pointCount = 0;
+int _treeCount = 0;
+
 int tempPointCount = 0;
 bool updatePoints = false;
+bool updateTrees = false;
 bool startReceived = false;
 
 // Callback function
 void onMessageReceived(const char *message, size_t size)
 {
-    std::string receivedMessage(message, size);
-
-    if (receivedMessage == "START_CLOUD")
+    if (size <= 0)
     {
-        buffer.clear();
-        startReceived = true;
         return;
     }
-    else if (receivedMessage == "END_CLOUD")
+    
+    if (message[0] == '!')
     {
-        tempPointCount = 0;
-        // If all packages have been received, update the points array and the vertex buffer
-        for (int i = 0; i < buffer.size() / 3; i++)
+        if (message[1] == 'S')
         {
-            points[i].x = buffer[i * 3];
-            points[i].y = buffer[i * 3 + 1];
-            points[i].z = buffer[i * 3 + 2];
-
-            tempPointCount++;
+            pointBuffer.clear();
+            startReceived = true;
         }
-        // Update the vertex buffer
-        _pointCount = tempPointCount;
-        updatePoints = true;
-        startReceived = false;
+        else if (message[1] == 'E')
+        {
+            _pointCount = ReadCloudBufferToPoints(pointBuffer, points);
+            startReceived = false;
+            updatePoints = true;
+        }
+        else if (message[1] == 'T')
+        {
+            _treeCount = AddTreesToBuffer(message, size, tree_points);
+            updateTrees = true;
+        }
         return;
     }
-    else if (!startReceived)
-    {
-        return;
-    }
-    // Interpret the message as a series of uint32_t
-    const uint32_t *uintArray = reinterpret_cast<const uint32_t *>(message);
-    int count = 0;
 
-    // Convert the data from network byte order to host byte order and add the points to the buffer
-    for (int i = 0; i < size / 4; i++)
+    if (startReceived)
     {
-        uint32_t hostByteOrderData = ntohl(uintArray[i]);
-        float hostByteOrderFloat = *reinterpret_cast<float *>(&hostByteOrderData);
-
-        buffer.push_back(hostByteOrderFloat);
-        count++;
+        AddCloudToArray(message, size, pointBuffer);
     }
 }
 
@@ -87,20 +78,27 @@ int main()
     OpenGLWindow window(800, 600, "OpenGL Window");
     ButtonHandler::InitImGui(window.GetWindow());
     Shader shader("../shaders/point.glsl");
+    Shader treeShader("../shaders/tree.glsl");
 
     ButtonHandler button1("SensorIntergrator");
     ButtonHandler button2("Graph");
     ButtonHandler button3("TreeDetection");
     ButtonHandler button4("Stop");
 
-    vb = new VertexBuffer(points, 100000 * sizeof(Point3D));
+    vb = new VertexBuffer(points, 5000000 * sizeof(Point3D));
     VertexBufferLayout layout;
     layout.PushFloat(3);
     Vertexarray array = Vertexarray();
     array.AddBuffer(*vb, layout);
+    treeVB = new VertexBuffer(tree_points, 5000 * sizeof(Point2D));
+    Vertexarray tree_array = Vertexarray();
+    VertexBufferLayout tree_layout;
+    tree_layout.PushFloat(2);
+    tree_array.AddBuffer(*treeVB, tree_layout);
+
     UDPSocket socket(onMessageReceived);
 
-    for (size_t i = 0; i < 20000; i++)
+    while(true)
     {
         glClear(GL_COLOR_BUFFER_BIT);
         checkGLError();
@@ -113,7 +111,19 @@ int main()
             updatePoints = false;
         }
 
+
         glDrawArrays(GL_POINTS, 0, _pointCount);
+        
+        if (updateTrees)
+        {
+            treeVB->update(tree_points, _treeCount * sizeof(Point2D));
+            updateTrees = false;
+        }
+        tree_array.Bind();
+        treeShader.Bind();
+        treeShader.SetUniformMat4f("MVP", window.getMVP());
+        glDrawArrays(GL_POINTS, 0, _treeCount);
+
         // Start the ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();

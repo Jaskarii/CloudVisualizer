@@ -33,8 +33,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
 void initCamera()
 {
-    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 10.0f);
-    glm::vec3 targetPos = glm::vec3(0.1f, 0.0f, 0.0f);
+    glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 1.0f);
+    glm::vec3 targetPos = glm::vec3(0.0f, 1.0f, 0.0f);
     glm::vec3 upVector = glm::vec3(0.0f, 0.0f, 1.0f);
 
     view = glm::lookAt(cameraPos, targetPos, upVector);
@@ -143,7 +143,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                     view = glm::translate(view, glm::vec3(0.0f, 0.0f, 0.5f));
                 } else {
                     // Rotate camera up (around the x-axis)
-                    view = glm::rotate(view, glm::radians(-1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                    view = glm::rotate(view, glm::radians(-1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
                 }
                 break;
             case GLFW_KEY_DOWN:
@@ -152,7 +152,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                     view = glm::translate(view, glm::vec3(0.0f, 0.0f, -0.5f));
                 } else {
                     // Rotate camera down (around the x-axis)
-                    view = glm::rotate(view, glm::radians(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+                    view = glm::rotate(view, glm::radians(1.0f), glm::vec3(1.0f, 0.0f, 0.0f));
                 }
                 break;
             case GLFW_KEY_LEFT:

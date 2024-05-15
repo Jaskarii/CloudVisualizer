@@ -1,8 +1,8 @@
 #include <iostream>
 #include <vector>
-#include <netinet/in.h>
 #include <sstream>  // For std::istringstream
 #include <string>   // For std::string
+#include "UDPSocket.h"
 
 
 namespace MessageParser 
@@ -10,6 +10,9 @@ namespace MessageParser
     struct Point3D
     {
         float x, y, z;
+
+        Point3D() : x(0), y(0), z(0) {}
+        Point3D(float x_, float y_, float z_) : x(x_), y(y_), z(z_) {}
     };
 
     struct Point2D
@@ -26,7 +29,7 @@ namespace MessageParser
         // Convert the data from network byte order to host byte order and add the points to the buffer
         for (int i = 0; i < size / 4; i++)
         {
-            uint32_t hostByteOrderData = ntohl(uintArray[i]);
+            uint32_t hostByteOrderData = UDPSocket::ntohl_wrapper(uintArray[i]);
             float hostByteOrderFloat = *reinterpret_cast<float *>(&hostByteOrderData);
 
             buffer.push_back(hostByteOrderFloat);

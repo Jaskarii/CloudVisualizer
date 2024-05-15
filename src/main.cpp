@@ -7,12 +7,13 @@
 #include <VertexBufferLayout.h>
 #include <Vertexarray.h>
 #include <iostream>
-#include <ButtonHandler.h>
 #include "MessageParser.h"
+#include "coordFrame.h"
+#include <ImGuiManager.h>
 
 using namespace MessageParser;
 
-char ipBuffer[256] = ""; // Buffer to hold ip
+char ipBuffer[1024] = ""; // Buffer to hold ip
 char portBuffer[256] = ""; // Buffer to hold port
 
 void checkGLError()
@@ -26,6 +27,7 @@ void checkGLError()
 
 Point3D *points = new Point3D[5000000];
 Point2D *tree_points = new Point2D[5000];
+CoordFrame* frame;
 
 VertexBuffer *vb;
 VertexBuffer *treeVB;
@@ -37,6 +39,7 @@ int tempPointCount = 0;
 bool updatePoints = false;
 bool updateTrees = false;
 bool startReceived = false;
+bool showTrees = false;
 
 // Callback function
 void onMessageReceived(const char *message, size_t size)
@@ -76,14 +79,9 @@ void onMessageReceived(const char *message, size_t size)
 int main()
 {
     OpenGLWindow window(800, 600, "OpenGL Window");
-    ButtonHandler::InitImGui(window.GetWindow());
-    Shader shader("../shaders/point.glsl");
-    Shader treeShader("../shaders/tree.glsl");
-
-    ButtonHandler button1("SensorIntergrator");
-    ButtonHandler button2("Graph");
-    ButtonHandler button3("TreeDetection");
-    ButtonHandler button4("Stop");
+    Shader shader("./shaders/point.glsl");
+    Shader treeShader("./shaders/tree.glsl");
+    frame = new CoordFrame();
 
     vb = new VertexBuffer(points, 5000000 * sizeof(Point3D));
     VertexBufferLayout layout;
@@ -98,6 +96,8 @@ int main()
 
     UDPSocket socket(onMessageReceived);
 
+    ImGuiManager imguiManager(window.GetWindow(),&socket, _pointCount, _treeCount, ipBuffer, portBuffer, showTrees);
+
     while(true)
     {
         glClear(GL_COLOR_BUFFER_BIT);
@@ -111,7 +111,6 @@ int main()
             updatePoints = false;
         }
 
-
         glDrawArrays(GL_POINTS, 0, _pointCount);
         
         if (updateTrees)
@@ -119,61 +118,22 @@ int main()
             treeVB->update(tree_points, _treeCount * sizeof(Point2D));
             updateTrees = false;
         }
-        tree_array.Bind();
-        treeShader.Bind();
-        treeShader.SetUniformMat4f("MVP", window.getMVP());
-        glDrawArrays(GL_POINTS, 0, _treeCount);
 
-        // Start the ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-
-        // Render your buttons
-        button1.Render();
-        button2.Render();
-        button3.Render();
-        button4.Render();
-
-        // InputText widget to capture text input
-        ImGui::InputText("Ip", ipBuffer, IM_ARRAYSIZE(ipBuffer));
-
-        // InputText widget to capture text input
-        ImGui::InputText("Port", portBuffer, IM_ARRAYSIZE(portBuffer));
-
-        // Check if buttons were clicked
-        if (button1.WasClicked())
+        if (_treeCount > 0 && showTrees)
         {
-            std::string ipString(ipBuffer);
-            std::string portString(portBuffer);
-            socket.sendMessage(ipString, portString,"SENSOR");
+            tree_array.Bind();
+            treeShader.Bind();
+            treeShader.SetUniformMat4f("MVP", window.getMVP());
+            glDrawArrays(GL_POINTS, 0, _treeCount);
         }
-        else if (button2.WasClicked())
-        {
-            std::string ipString(ipBuffer);
-            std::string portString(portBuffer);
-            socket.sendMessage(ipString, portString,"GRAPH");
-        }
-        else if (button3.WasClicked())
-        {
-            std::string ipString(ipBuffer);
-            std::string portString(portBuffer);
-            socket.sendMessage(ipString, portString,"TREE");
-        }
-        else if (button4.WasClicked())
-        {
-            std::string ipString(ipBuffer);
-            std::string portString(portBuffer);
-            socket.sendMessage(ipString, portString,"STOP");
-        }
+
+        frame->Render(window.getMVP());
 
         // Render ImGui frame
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        imguiManager.Render();
         if (!window.PreRender())
         {
             socket.~UDPSocket();
-            ButtonHandler::CleanupImGui();
             break;
         }
     }

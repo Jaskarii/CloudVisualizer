@@ -24,10 +24,16 @@ set(CMAKE_BUILD_TYPE "Release")
 
 add_library(glad glad.c)
 
+set(SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders)
+
+# Copy shader files to the build directory
+file(GLOB SHADER_FILES "${SHADER_DIR}/*.glsl")
+file(COPY ${SHADER_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+
 # Gather all ImGui source files
 file(GLOB IMGUI_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/headers/ImGui/*.cpp)
 file(GLOB SOURCES "src/*.cpp")
-file(GLOB SHADER_FILES "${SHADER_DIR}/*.glsl")
+file(GLOB SHADER_FILES ${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.glsl)
 
 set(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/headers/UDPSocket.h)
 
@@ -36,9 +42,6 @@ if(WIN32)
 else()
     list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Linux/UDPSocket_Ubuntu.cpp)
 endif()
-
-
-file(COPY ${SHADER_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/shaders)
 
 add_executable(MyOpenGLApp ${SOURCES} ${IMGUI_SOURCES} ${SOURCE_FILES})
 

@@ -7,6 +7,15 @@
 #include <iostream>
 #include "glm/gtc/type_ptr.hpp"
 
+void checkGLErroor()
+{
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+        std::cerr << "OpenGL error in " << std::endl;
+    }
+}
+
 Shader::Shader(const std::string &filepath)
 {
 	ShaderProgramSource source = ParseShader(filepath);
@@ -136,24 +145,55 @@ ShaderProgramSource Shader::ParseShader(const std::string &file)
 
 unsigned int Shader::CreateShader(const std::string &vertexShader, const std::string &geometryShader, const std::string &fragmentShader)
 {
-	unsigned int program = glCreateProgram();
-	unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-	unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
-	if (!geometryShader.empty())
-	{
-		unsigned int gs = CompileShader(GL_GEOMETRY_SHADER, geometryShader);
-		glAttachShader(program, gs);
-		glDeleteShader(gs);
-	}
+    unsigned int program = glCreateProgram();
+    unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
+    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
-	glAttachShader(program, vs);
-	glAttachShader(program, fs);
+    if (!geometryShader.empty())
+    {
+        unsigned int gs = CompileShader(GL_GEOMETRY_SHADER, geometryShader);
+        glAttachShader(program, gs);
+        glDeleteShader(gs);
+    }
 
-	glLinkProgram(program);
-	glValidateProgram(program);
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
 
-	glDeleteShader(vs);
-	glDeleteShader(fs);
+    glLinkProgram(program);
 
-	return program;
+    // Check for linking errors
+    int linkStatus;
+    glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+    if (linkStatus == GL_FALSE)
+    {
+        int length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+        char *message = (char *)alloca(length * sizeof(char));
+        glGetProgramInfoLog(program, length, &length, message);
+        std::cout << "Shader linking failed: " << message << std::endl;
+        glDeleteProgram(program);
+        return 0;
+    }
+
+    glValidateProgram(program);
+
+    // Check for validation errors
+    int validateStatus;
+    glGetProgramiv(program, GL_VALIDATE_STATUS, &validateStatus);
+    if (validateStatus == GL_FALSE)
+    {
+        int length;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &length);
+        char *message = (char *)alloca(length * sizeof(char));
+        glGetProgramInfoLog(program, length, &length, message);
+        std::cout << "Shader validation failed: " << message << std::endl;
+        glDeleteProgram(program);
+        return 0;
+    }
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    return program;
 }
+

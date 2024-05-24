@@ -1,7 +1,7 @@
 #include "coordFrame.h"
 #include "VertexBufferLayout.h"
 
-CoordFrame::CoordFrame() : _shader(Shader("./shaders/coord.glsl"))
+CoordFrame::CoordFrame() : _shader(Shader("../shaders/coord.glsl"))
 {
     ColoredPoint3D points[6];
     points[0] = ColoredPoint3D(0,0,0,1,0,0);

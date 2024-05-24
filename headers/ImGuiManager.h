@@ -6,8 +6,8 @@
 class ImGuiManager 
 {
 public:
-    ImGuiManager(GLFWwindow* window, UDPSocket* socket, int& pointCount,int& treeCount, char* ipBuf, char* portBuf, bool& treesVisible)
-        : window_(window), _socket(socket), _pointCount(pointCount), _treeCount(treeCount), ipBuffer(ipBuf), portBuffer(portBuf), _checkBoxState(treesVisible) {
+    ImGuiManager(GLFWwindow* window, UDPSocket* socket, int& pointCount, int& treeCount, char* ipBuf, char* portBuf, bool& treesVisible, int& sliderValue)
+        : window_(window), _socket(socket), _pointCount(pointCount), _treeCount(treeCount), ipBuffer(ipBuf), portBuffer(portBuf), _checkBoxState(treesVisible), _sliderValue(sliderValue) {
         InitImGui();
     }
 
@@ -25,6 +25,7 @@ public:
         RenderButtons();
         RenderTextInputs();
         ImGui::Checkbox("Trees", &_checkBoxState);
+        RenderSlider();
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -38,6 +39,7 @@ private:
     UDPSocket* _socket;
     int& _treeCount;
     bool& _checkBoxState;
+    int& _sliderValue; // New member variable for slider value
 
     ButtonHandler button0{"Pre-Sensor"};
     ButtonHandler button1{"Sensor"};
@@ -72,34 +74,34 @@ private:
         {
             std::string ipString(ipBuffer);
             std::string portString(portBuffer);
-            _socket->sendMessage(ipString, portString,"SENSOR");
+            _socket->sendMessage(ipString, portString, "SENSOR");
             _treeCount = 0;
         }
         else if (button0.WasClicked())
         {
             std::string ipString(ipBuffer);
             std::string portString(portBuffer);
-            _socket->sendMessage(ipString, portString,"PRESENSOR");
+            _socket->sendMessage(ipString, portString, "PRESENSOR");
             _treeCount = 0;
         }
         else if (button2.WasClicked())
         {
             std::string ipString(ipBuffer);
             std::string portString(portBuffer);
-            _socket->sendMessage(ipString, portString,"GRAPH");
+            _socket->sendMessage(ipString, portString, "GRAPH");
             _treeCount = 0;
         }
         else if (button3.WasClicked())
         {
             std::string ipString(ipBuffer);
             std::string portString(portBuffer);
-            _socket->sendMessage(ipString, portString,"TREE");
+            _socket->sendMessage(ipString, portString, "TREE");
         }
         else if (button4.WasClicked())
         {
             std::string ipString(ipBuffer);
             std::string portString(portBuffer);
-            _socket->sendMessage(ipString, portString,"STOP");
+            _socket->sendMessage(ipString, portString, "STOP");
         }
     }
 
@@ -108,5 +110,10 @@ private:
         ImGui::Text("Point Count: %d", _pointCount);
         ImGui::InputText("Ip", ipBuffer, 32);
         ImGui::InputText("Port", portBuffer, 8);
+    }
+
+    void RenderSlider()
+    {
+        ImGui::SliderInt("Slider", &_sliderValue, 3, 150);
     }
 };

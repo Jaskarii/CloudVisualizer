@@ -9,6 +9,7 @@
 #include <ImGuiManager.h>
 #include "gridTreeDetector.h"
 #include <OctoTree.h>
+#include <QuadTree.h>
 
 char ipBuffer[1024] = ""; // Buffer to hold IP
 char portBuffer[256] = ""; // Buffer to hold port
@@ -24,6 +25,7 @@ void checkGLError()
 
 GridTreeDetector *gridTreeDetector = new GridTreeDetector();
 OctoTree *octTree = new OctoTree(-100, -100, -100, 100, 100, 100, 10, 10);
+QuadTree *quadTree = new QuadTree(-100, -100, 100, 100, 10, 10);
 Point3D *points = new Point3D[5000000];
 Point2D *tree_points = new Point2D[50000];
 CoordFrame *frame;
@@ -40,6 +42,7 @@ bool updateTrees = false;
 bool startReceived = false;
 bool showTrees = false;
 bool updatingPoints = false;
+int densityScale = 5;
 
 
 // Callback function
@@ -63,18 +66,21 @@ void onMessageReceived(const char *message, size_t size)
             gridTreeDetector->splitIntoGrids(points, values.pointCount);
             //QuadTree
             //OctoTree
-            octTree->clear();
-            
-            octTree = new OctoTree(values.minX, values.minY, values.minZ, values.maxX, values.maxY, values.maxZ, 10, 15);
+            quadTree->clear();
+            quadTree = new QuadTree(values.minX, values.minY, values.maxX, values.maxY, 10, 80);
+
+            // octTree->clear();
+            // octTree = new OctoTree(values.minX, values.minY, values.minZ, values.maxX, values.maxY, values.maxZ, 10, 20);
 
             for (size_t i = 0; i < values.pointCount; i++)
             {
                 if (points[i].isVegetation)
                 {
-                    octTree->insert(points[i]);
+                    quadTree->insert(points[i]);
                 }
             }
-            octTree->calculateDensity();
+            quadTree->calculateDensity();
+            //quadTree->calculateDensityGradient();
 
             _pointCount = values.pointCount;
             startReceived = false;
@@ -103,7 +109,7 @@ int main()
 {
     OpenGLWindow window(800, 600, "OpenGL Window");
 
-    vb = new VertexBuffer(points, 2000000 * sizeof(Point3D));
+    vb = new VertexBuffer(points, 5000000 * sizeof(Point3D));
     VertexBufferLayout layout;
     layout.PushFloat(3);
     layout.PushFloat(1);
@@ -124,7 +130,7 @@ int main()
 
     UDPSocket socket(onMessageReceived);
 
-    ImGuiManager imguiManager(window.GetWindow(), &socket, _pointCount, _treeCount, ipBuffer, portBuffer, showTrees);
+    ImGuiManager imguiManager(window.GetWindow(), &socket, _pointCount, _treeCount, ipBuffer, portBuffer, showTrees, densityScale);
 
     while (true)
     {
@@ -134,15 +140,15 @@ int main()
         if (updatePoints)
         {
             vb->update(points, _pointCount * sizeof(Point3D));
-            updatingPoints = false;
             updatePoints = false;
         }
 
-        if (_pointCount > 0 && !updatingPoints)
+        if (_pointCount > 0)
         {
             array.Bind();
             shader.Bind();
             shader.SetUniformMat4f("MVP", window.getMVP());
+            shader.SetUniform1i("densityScale", densityScale);
             glDrawArrays(GL_POINTS, 0, _pointCount);
             checkGLError();
         }

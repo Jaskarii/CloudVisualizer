@@ -1,35 +1,34 @@
 #pragma once
-
+#include <vector>
 #include "MessageParser.h"
 
 using namespace MessageParser;
+
+struct QuadTreeNode {
+    std::vector<Point3D*> points;
+    QuadTreeNode* children[4];
+    bool isSplit;
+    float depth;
+    QuadTreeNode(float depth);
+    ~QuadTreeNode();
+};
+
 class QuadTree {
 public:
-    QuadTree();
+    QuadTree(double minX, double minY, double maxX, double maxY, int maxPointsPerNode, int maxDepth);
     ~QuadTree();
-
-    void insert(const Point3D& point);
-    std::vector<Point3D> query(const Point3D& center, float radius) const;
+    void insert(Point3D& point);
     void clear();
+    void calculateDensity();
 
 private:
-    struct Node 
-    {
-        Point3D point;
-        Node* children[4];
+    QuadTreeNode* root;
+    double minX, minY, maxX, maxY;
+    int maxPointsPerNode;
+    int maxDepth;
 
-        Node(const Point3D& p) : point(p) 
-        {
-            for (int i = 0; i < 4; i++) {
-                children[i] = nullptr;
-            }
-        }
-    };
-
-    Node* root;
-
-    void insertRecursive(Node* node, const Point3D& point);
-    void queryRecursive(Node* node, const Point3D& center, float radius, std::vector<Point3D>& result) const;
-    void clearRecursive(Node* node);
-
+    void insertRecursive(QuadTreeNode* node, Point3D& point, double minX, double minY, double maxX, double maxY);
+    int getChildIndex(const Point3D& point, double midX, double midY);
+    void clearRecursive(QuadTreeNode* node);
+    void calculateDensityRecursive(QuadTreeNode* node, double minX, double minY, double maxX, double maxY);
 };

@@ -21,6 +21,7 @@ void main()
 in float o_depth;
 in float o_isGround;
 out vec4 FragColor;
+uniform int densityScale;
 
 void main()
 {
@@ -32,10 +33,10 @@ void main()
     else
     {
         // Calculate the cube root of the depth
-        float scaledDepth = pow(o_depth, 1.0 / 3.0);
+        float scaledDepth = pow(o_depth, 1.0 / 2.0);
         
         // Normalize the scaled depth to [0, 1]
-        float normalizedDepth = scaledDepth / 20.0; // Adjust the divisor as necessary to fit your depth range
+        float normalizedDepth = scaledDepth / densityScale; // Adjust the divisor as necessary to fit your depth range
         normalizedDepth = clamp(normalizedDepth, 0.0, 1.0); // Ensure it's within [0, 1]
 
         // Assign color based on the normalized depth

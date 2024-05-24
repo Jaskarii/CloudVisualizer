@@ -1,80 +1,118 @@
 #include "QuadTree.h"
+#include <iostream>
 
-QuadTree::QuadTree()
-{
+QuadTreeNode::QuadTreeNode(float depth)
+    : isSplit(false), depth(depth) {
+    std::fill(std::begin(children), std::end(children), nullptr);
 }
 
-QuadTree::~QuadTree()
-{
+QuadTreeNode::~QuadTreeNode() {
+    for (auto& child : children) {
+        delete child;
+    }
 }
 
-void QuadTree::insert(const Point3D &point)
-{
+QuadTree::QuadTree(double minX, double minY, double maxX, double maxY, int maxPointsPerNode, int maxDepth)
+    : root(nullptr), minX(minX), minY(minY), maxX(maxX), maxY(maxY), maxPointsPerNode(maxPointsPerNode), maxDepth(maxDepth) {}
+
+QuadTree::~QuadTree() {
+    clear();
 }
 
-std::vector<Point3D> QuadTree::query(const Point3D &center, float radius) const
-{
-    std::vector<Point3D> result;
-    queryRecursive(root, center, radius, result);
-    return result;
+void QuadTree::insert(Point3D& point) {
+    if (root == nullptr) {
+        root = new QuadTreeNode(0.0f);
+    }
+    insertRecursive(root, point, minX, minY, maxX, maxY);
 }
 
-void QuadTree::clear()
-{
+void QuadTree::clear() {
     clearRecursive(root);
-    root = nullptr;
+    root = new QuadTreeNode(0.0f); // Reset the root after clearing
 }
 
-void QuadTree::insertRecursive(Node *node, const Point3D &point)
-{
-        // Assuming that the space is divided into 4 equal quadrants
-    // We need to decide in which quadrant the point belongs
-    int index;
-    if (point.x < node->point.x) {
-        index = point.y < node->point.y ? 0 : 1;
-    } else {
-        index = point.y < node->point.y ? 2 : 3;
+void QuadTree::clearRecursive(QuadTreeNode* node) {
+    if (node == nullptr) {
+        return;
     }
-
-    if (node->children[index] == nullptr) {
-        node->children[index] = new Node(point);
-    } else {
-        insertRecursive(node->children[index], point);
+    for (auto& child : node->children) {
+        clearRecursive(child);
+        child = nullptr; // Set pointer to null after deletion
     }
+    delete node;
 }
 
-void QuadTree::queryRecursive(Node *node, const Point3D &center, float radius, std::vector<Point3D> &result) const
-{
-    if (node == nullptr) 
-    {
+void QuadTree::insertRecursive(QuadTreeNode* node, Point3D& point, double minX, double minY, double maxX, double maxY) {
+    if (node->depth >= maxDepth) {
+        node->points.push_back(&point);
         return;
     }
 
-    float distance = sqrt(pow(node->point.x - center.x, 2) + pow(node->point.y - center.y, 2) + pow(node->point.z - center.z, 2));
-    if (distance <= radius) {
-        result.push_back(node->point);
+    if (node->isSplit) {
+        double midX = (minX + maxX) / 2;
+        double midY = (minY + maxY) / 2;
+        int childIndex = getChildIndex(point, midX, midY);
+        insertRecursive(node->children[childIndex], point,
+                        childIndex & 1 ? midX : minX, childIndex & 2 ? midY : minY,
+                        childIndex & 1 ? maxX : midX, childIndex & 2 ? maxY : midY);
+        return;
     }
 
-    // Check in which quadrant the sphere of radius might fall into
-    for (int i = 0; i < 4; i++) {
-        if (node->children[i] != nullptr) {
-            float distanceToChild = sqrt(pow(node->children[i]->point.x - center.x, 2) + pow(node->children[i]->point.y - center.y, 2) + pow(node->children[i]->point.z - center.z, 2));
-            if (distanceToChild - radius <= 0) { // If the sphere intersects the quadrant
-                queryRecursive(node->children[i], center, radius, result);
-            }
+    node->points.push_back(&point);
+
+    if (node->points.size() >= maxPointsPerNode) {
+        double midX = (minX + maxX) / 2;
+        double midY = (minY + maxY) / 2;
+        node->isSplit = true;
+
+        for (int i = 0; i < 4; ++i) {
+            node->children[i] = new QuadTreeNode(node->depth + 1.0f);
+        }
+
+        for (auto& oldPoint : node->points) {
+            int childIndex = getChildIndex(*oldPoint, midX, midY);
+            node->children[childIndex]->points.push_back(oldPoint);
+        }
+
+        node->points.clear();
+
+        int childIndex = getChildIndex(point, midX, midY);
+        insertRecursive(node->children[childIndex], point,
+                        childIndex & 1 ? midX : minX, childIndex & 2 ? midY : minY,
+                        childIndex & 1 ? maxX : midX, childIndex & 2 ? maxY : midY);
+    }
+}
+
+int QuadTree::getChildIndex(const Point3D& point, double midX, double midY) {
+    int childIndex = 0;
+    if (point.x >= midX) childIndex |= 1;
+    if (point.y >= midY) childIndex |= 2;
+    return childIndex;
+}
+
+void QuadTree::calculateDensity() {
+    if (root == nullptr) return;
+    calculateDensityRecursive(root, minX, minY, maxX, maxY);
+}
+
+void QuadTree::calculateDensityRecursive(QuadTreeNode* node, double minX, double minY, double maxX, double maxY) {
+    if (node == nullptr) return;
+
+    double area = (maxX - minX) * (maxY - minY);
+    if (area == 0) return;
+
+    for (auto& pointPtr : node->points) {
+        pointPtr->density = static_cast<float>(node->points.size()) / static_cast<float>(area);
+    }
+
+    if (node->isSplit) {
+        double midX = (minX + maxX) / 2;
+        double midY = (minY + maxY) / 2;
+
+        for (int i = 0; i < 4; ++i) {
+            calculateDensityRecursive(node->children[i],
+                                      i & 1 ? midX : minX, i & 2 ? midY : minY,
+                                      i & 1 ? maxX : midX, i & 2 ? maxY : midY);
         }
     }
-}
-
-void QuadTree::clearRecursive(Node *node)
-{
-        if (node == nullptr) {
-        return;
-    }
-
-    for (int i = 0; i < 4; i++) {
-        clearRecursive(node->children[i]);
-    }
-
-    delete node;
 }

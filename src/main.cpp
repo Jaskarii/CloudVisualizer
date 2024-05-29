@@ -23,11 +23,13 @@ void checkGLError()
     }
 }
 
-GridTreeDetector *gridTreeDetector = new GridTreeDetector();
+GridTreeDetector *gridTreeDetector = new GridTreeDetector(0.5f,0.2f,10);
+GridTreeDetector *gridTreeDetector2 = new GridTreeDetector(0.02f,0.0f,1);
 OctoTree *octTree = new OctoTree(-100, -100, -100, 100, 100, 100, 10, 10);
 QuadTree *quadTree = new QuadTree(-100, -100, 100, 100, 10, 10);
 Point3D *points = new Point3D[5000000];
 Point2D *tree_points = new Point2D[50000];
+Point2D *test_tree_points = new Point2D[50000];
 CoordFrame *frame;
 
 VertexBuffer *vb;
@@ -63,11 +65,13 @@ void onMessageReceived(const char *message, size_t size)
         else if (message[1] == 'E')
         {
             MinMaxValues values = ReadCloudBufferToPoints(pointBuffer, points);
-            gridTreeDetector->splitIntoGrids(points, values.pointCount);
+            gridTreeDetector->SeparateVegetation(points, values.pointCount);
+            // gridTreeDetector2->threshold = densityScale;
+            // gridTreeDetector2->splitIntoGrids(points, values.pointCount);
             //QuadTree
             //OctoTree
             quadTree->clear();
-            quadTree = new QuadTree(values.minX, values.minY, values.maxX, values.maxY, 10, 80);
+            quadTree = new QuadTree(values.minX, values.minY, values.maxX, values.maxY, 20, 9);
 
             // octTree->clear();
             // octTree = new OctoTree(values.minX, values.minY, values.minZ, values.maxX, values.maxY, values.maxZ, 10, 20);
@@ -80,7 +84,6 @@ void onMessageReceived(const char *message, size_t size)
                 }
             }
             quadTree->calculateDensity();
-            //quadTree->calculateDensityGradient();
 
             _pointCount = values.pointCount;
             startReceived = false;

@@ -114,6 +114,6 @@ private:
 
     void RenderSlider()
     {
-        ImGui::SliderInt("Slider", &_sliderValue, 3, 150);
+        ImGui::SliderInt("Slider", &_sliderValue, 1, 500);
     }
 };

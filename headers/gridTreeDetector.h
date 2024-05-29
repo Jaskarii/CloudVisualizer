@@ -29,19 +29,6 @@ struct GridCell {
 
     void addPoint(int index, Point3D* point) 
     {
-        // int heightIndex = static_cast<int>((point->z-groundThreshold)*5);
-        // if (heightToCount.find(heightIndex) == heightToCount.end()) 
-        // {
-        //     heightToCount[heightIndex] = 1; // Create a new grid cell
-        //     heightStages++;
-        // }
-        // else
-        // {
-        //     heightToCount[heightIndex]++;
-        // }
-        // sumX += point->x;
-        // sumY += point->y;
-        // sumZ += point->z;
         points.push_back(point);
     }
 
@@ -79,16 +66,22 @@ struct GridCell {
 
 };
 
-const float GridSize = 0.5f;
-const float GroundThreshold = 0.30f;
-const int vegetrationThreshold = 100;
+const float GridSize;
+const float GroundThreshold;
+const int vegetrationThreshold;
 
 public:
-    GridTreeDetector();
+    GridTreeDetector(float gridSize = 0.1f, float groundThreshold = 0.20f, int vegetrationThreshold = 1);
     ~GridTreeDetector();
 
+    void edgeDetection();
+
+    int threshold = 10;
+
+
     // Method to split point cloud into XY grids
-    std::vector<Point3D> splitIntoGrids(Point3D *points, int pointCount);
+    void splitIntoGrids(Point3D *points, int pointCount);
+    void SeparateVegetation(Point3D *points, int pointCount);
 
 private:
     std::map<std::pair<int, int>, GridCell> gridCells;

@@ -2,7 +2,7 @@
 #include <iostream>
 
 QuadTreeNode::QuadTreeNode(float depth)
-    : isSplit(false), depth(depth) {
+    :  centrePoint({0, 0}), isSplit(false), depth(depth), pointCount(0), growthRate(0.0f){
     std::fill(std::begin(children), std::end(children), nullptr);
 }
 
@@ -22,6 +22,7 @@ QuadTree::~QuadTree() {
 void QuadTree::insert(Point3D& point) {
     if (root == nullptr) {
         root = new QuadTreeNode(0.0f);
+        root->centrePoint = calculateCenter(minX, minY, maxX, maxY);
     }
     insertRecursive(root, point, minX, minY, maxX, maxY);
 }
@@ -42,7 +43,9 @@ void QuadTree::clearRecursive(QuadTreeNode* node) {
     delete node;
 }
 
-void QuadTree::insertRecursive(QuadTreeNode* node, Point3D& point, double minX, double minY, double maxX, double maxY) {
+void QuadTree::insertRecursive(QuadTreeNode* node, Point3D& point, double minX, double minY, double maxX, double maxY) 
+{
+    node->pointCount++;
     if (node->depth >= maxDepth) {
         node->points.push_back(&point);
         return;
@@ -67,6 +70,10 @@ void QuadTree::insertRecursive(QuadTreeNode* node, Point3D& point, double minX, 
 
         for (int i = 0; i < 4; ++i) {
             node->children[i] = new QuadTreeNode(node->depth + 1.0f);
+            node->children[i]->centrePoint = calculateCenter(
+                i & 1 ? midX : minX, i & 2 ? midY : minY,
+                i & 1 ? maxX : midX, i & 2 ? maxY : midY
+            );
         }
 
         for (auto& oldPoint : node->points) {
@@ -83,7 +90,8 @@ void QuadTree::insertRecursive(QuadTreeNode* node, Point3D& point, double minX, 
     }
 }
 
-int QuadTree::getChildIndex(const Point3D& point, double midX, double midY) {
+int QuadTree::getChildIndex(const Point3D& point, double midX, double midY) 
+{
     int childIndex = 0;
     if (point.x >= midX) childIndex |= 1;
     if (point.y >= midY) childIndex |= 2;
@@ -92,17 +100,65 @@ int QuadTree::getChildIndex(const Point3D& point, double midX, double midY) {
 
 void QuadTree::calculateDensity() {
     if (root == nullptr) return;
-    calculateDensityRecursive(root, minX, minY, maxX, maxY);
+    calculateDensityRecursive(root, minX, minY, maxX, maxY, root->pointCount);
 }
 
-void QuadTree::calculateDensityRecursive(QuadTreeNode* node, double minX, double minY, double maxX, double maxY) {
+void QuadTree::calculateDensityRecursive(QuadTreeNode* node, double minX, double minY, double maxX, double maxY, int ParentPointCount)
+{
     if (node == nullptr) return;
 
     double area = (maxX - minX) * (maxY - minY);
     if (area == 0) return;
+    
 
-    for (auto& pointPtr : node->points) {
-        pointPtr->density = static_cast<float>(node->points.size()) / static_cast<float>(area);
+    if (node->isSplit) {
+        double midX = (minX + maxX) / 2;
+        double midY = (minY + maxY) / 2;
+
+        for (int i = 0; i < 4; ++i) 
+        {
+            calculateDensityRecursive(node->children[i],
+                                      i & 1 ? midX : minX, i & 2 ? midY : minY,
+                                      i & 1 ? maxX : midX, i & 2 ? maxY : midY, ParentPointCount);
+        }
+        return;
+    }
+
+    float density = (static_cast<float>(node->points.size()) / static_cast<float>(area));
+
+    for (auto& pointPtr : node->points) 
+    {
+        pointPtr->density = density;
+    }
+}
+
+Point2D QuadTree::calculateCenter(double minX, double minY, double maxX, double maxY) 
+{
+    Point2D center;
+    center.x = (minX + maxX) / 2;
+    center.y = (minY + maxY) / 2;
+    return center;
+}
+
+std::vector<Point2D> QuadTree::GetTreePositions(float densityLimit) 
+{
+    std::vector<Point2D> result;
+    if (root == nullptr) return result;
+    getTreePositionsRecursive(root, minX, minY, maxX, maxY, densityLimit, result);
+    return result;
+}
+
+void QuadTree::getTreePositionsRecursive(QuadTreeNode* node, double minX, double minY, double maxX, double maxY, float densityLimit, std::vector<Point2D>& result) 
+{
+    if (node == nullptr) return;
+
+    if (node->depth == maxDepth && !node->isSplit) {
+        double area = (maxX - minX) * (maxY - minY);
+        float density = static_cast<float>(node->points.size()) / static_cast<float>(area);
+        if (density >= densityLimit) {
+            result.push_back(node->centrePoint);
+        }
+        return;
     }
 
     if (node->isSplit) {
@@ -110,9 +166,9 @@ void QuadTree::calculateDensityRecursive(QuadTreeNode* node, double minX, double
         double midY = (minY + maxY) / 2;
 
         for (int i = 0; i < 4; ++i) {
-            calculateDensityRecursive(node->children[i],
+            getTreePositionsRecursive(node->children[i],
                                       i & 1 ? midX : minX, i & 2 ? midY : minY,
-                                      i & 1 ? maxX : midX, i & 2 ? maxY : midY);
+                                      i & 1 ? maxX : midX, i & 2 ? maxY : midY, densityLimit, result);
         }
     }
 }

@@ -20,7 +20,7 @@ include_directories(
     headers
 )
 
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
 
 add_library(glad glad.c)
 
@@ -40,15 +40,15 @@ set(SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/headers/UDPSocket.h)
 if(WIN32)
     list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/win32/UDPSocket_Win.cpp)
 else()
-    list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/Linux/UDPSocket_Ubuntu.cpp)
+    list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/Linux/UDPSocket_Ubuntu.cpp)
 endif()
 
 add_executable(MyOpenGLApp ${SOURCES} ${IMGUI_SOURCES} ${SOURCE_FILES})
 
 target_link_libraries(MyOpenGLApp
     glad  # Example for linking against OpenGL
-    glfw3
-    ws2_32
-    #dl
+    glfw
+    #ws2_32
+    dl
     Threads::Threads
 )

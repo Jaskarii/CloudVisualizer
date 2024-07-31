@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <cstring>
 #include <thread>
+#include <arpa/inet.h>
 
 UDPSocket::UDPSocket(MessageReceivedCallback callback)
     : callback(callback)

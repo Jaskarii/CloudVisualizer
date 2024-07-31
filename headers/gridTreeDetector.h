@@ -1,5 +1,6 @@
 #include <map>
 #include "MessageParser.h"
+#include "math.h"
 
 using namespace MessageParser;
 class GridTreeDetector 

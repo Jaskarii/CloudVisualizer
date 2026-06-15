@@ -47,5 +47,7 @@ namespace MessageParser
 
     void AddCloudToArray(const char *message, size_t size, std::vector<float> &buffer);
     MinMaxValues ReadCloudBufferToPoints(std::vector<float> &buffer, Point3D *points);
+    bool ReadCloudFileToBuffer(const std::string &filePath, std::vector<float> &buffer, std::string &errorMessage);
+    bool ReadTreeXmlFileToBuffer(const std::string &filePath, Point2D *tree_points, int maxTreePoints, int &treeCount, std::string &errorMessage);
     int AddTreesToBuffer(const char *message, int Fromindex, size_t size, Point2D *tree_points);
 }

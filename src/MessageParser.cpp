@@ -1,7 +1,73 @@
     #include "MessageParser.h"
+    #include <algorithm>
+    #include <cctype>
+    #include <fstream>
+    #include <pcl/io/pcd_io.h>
+    #include <pcl/point_types.h>
 
     namespace MessageParser
     {
+        namespace
+        {
+            std::string ToLower(std::string value)
+            {
+                std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
+                    return static_cast<char>(std::tolower(c));
+                });
+                return value;
+            }
+
+            bool ExtractAttributeValue(const std::string &line, const std::string &attributeName, std::string &value)
+            {
+                const std::string token = attributeName + "=\"";
+                const size_t tokenStart = line.find(token);
+                if (tokenStart == std::string::npos)
+                {
+                    return false;
+                }
+
+                const size_t valueStart = tokenStart + token.size();
+                const size_t valueEnd = line.find('"', valueStart);
+                if (valueEnd == std::string::npos)
+                {
+                    return false;
+                }
+
+                value = line.substr(valueStart, valueEnd - valueStart);
+                return true;
+            }
+
+            bool ExtractAttributeFloat(const std::string &line, const std::string &attributeName, float &value)
+            {
+                std::string valueString;
+                if (!ExtractAttributeValue(line, attributeName, valueString))
+                {
+                    return false;
+                }
+
+                try
+                {
+                    value = std::stof(valueString);
+                    return true;
+                }
+                catch (...)
+                {
+                    return false;
+                }
+            }
+
+            bool IsLikelyTreeObjectName(const std::string &objectName)
+            {
+                const std::string lowered = ToLower(objectName);
+                return lowered.find("tree") != std::string::npos ||
+                       lowered.find("pine") != std::string::npos ||
+                       lowered.find("spruce") != std::string::npos ||
+                       lowered.find("birch") != std::string::npos ||
+                       lowered.find("fir") != std::string::npos ||
+                       lowered.find("stump") != std::string::npos;
+            }
+        }
+
 
         void AddCloudToArray(const char *message, size_t size, std::vector<float> &buffer)
         {
@@ -45,6 +111,204 @@
             }
             // Update the vertex buffer
             return minMaxValues;
+        }
+
+        bool ReadCloudFileToBuffer(const std::string &filePath, std::vector<float> &buffer, std::string &errorMessage)
+        {
+            const bool isPcd = filePath.size() >= 4 && filePath.substr(filePath.size() - 4) == ".pcd";
+            if (isPcd)
+            {
+                pcl::PointCloud<pcl::PointXYZ> cloud;
+                if (pcl::io::loadPCDFile<pcl::PointXYZ>(filePath, cloud) < 0)
+                {
+                    errorMessage = "Failed to load PCD file using PCL: " + filePath;
+                    return false;
+                }
+
+                if (cloud.empty())
+                {
+                    errorMessage = "PCD file contains no points: " + filePath;
+                    return false;
+                }
+
+                buffer.clear();
+                buffer.reserve(cloud.size() * 3);
+                for (const auto &point : cloud.points)
+                {
+                    buffer.push_back(point.x);
+                    buffer.push_back(point.y);
+                    buffer.push_back(point.z);
+                }
+
+                errorMessage.clear();
+                return true;
+            }
+
+            std::ifstream input(filePath);
+            if (!input.is_open())
+            {
+                errorMessage = "Could not open file: " + filePath;
+                return false;
+            }
+
+            buffer.clear();
+            std::string line;
+            int parsedPoints = 0;
+
+            while (std::getline(input, line))
+            {
+                if (line.empty())
+                {
+                    continue;
+                }
+
+                if (line[0] == '#')
+                {
+                    continue;
+                }
+
+                for (char &c : line)
+                {
+                    if (c == ',' || c == ';' || c == '\t')
+                    {
+                        c = ' ';
+                    }
+                }
+
+                std::istringstream lineStream(line);
+                float x, y, z;
+                if (!(lineStream >> x >> y >> z))
+                {
+                    continue;
+                }
+
+                buffer.push_back(x);
+                buffer.push_back(y);
+                buffer.push_back(z);
+                parsedPoints++;
+            }
+
+            if (parsedPoints == 0)
+            {
+                errorMessage = "No valid points found in file: " + filePath;
+                return false;
+            }
+
+            errorMessage.clear();
+            return true;
+        }
+
+        bool ReadTreeXmlFileToBuffer(const std::string &filePath, Point2D *tree_points, int maxTreePoints, int &treeCount, std::string &errorMessage)
+        {
+            std::string loweredPath = ToLower(filePath);
+            const bool isXml = loweredPath.size() >= 4 && loweredPath.substr(loweredPath.size() - 4) == ".xml";
+            if (!isXml)
+            {
+                errorMessage = "Tree file must be an XML file: " + filePath;
+                treeCount = 0;
+                return false;
+            }
+
+            std::ifstream input(filePath);
+            if (!input.is_open())
+            {
+                errorMessage = "Could not open tree XML file: " + filePath;
+                treeCount = 0;
+                return false;
+            }
+
+            bool inObject = false;
+            bool inTree = false;
+            bool currentObjectIsForestType = false;
+            bool currentObjectIsTreeLikeName = false;
+            bool objectPositionRead = false;
+            int parsedTrees = 0;
+            std::string line;
+
+            while (std::getline(input, line))
+            {
+                if (line.find("<object") != std::string::npos)
+                {
+                    inObject = true;
+                    inTree = false;
+                    objectPositionRead = false;
+
+                    currentObjectIsForestType = false;
+                    currentObjectIsTreeLikeName = false;
+
+                    std::string objectType;
+                    if (ExtractAttributeValue(line, "type", objectType))
+                    {
+                        currentObjectIsForestType = ToLower(objectType) == "forest";
+                    }
+
+                    std::string objectName;
+                    if (ExtractAttributeValue(line, "name", objectName))
+                    {
+                        currentObjectIsTreeLikeName = IsLikelyTreeObjectName(objectName);
+                    }
+                }
+
+                if (inObject && currentObjectIsForestType && line.find("<tree") != std::string::npos)
+                {
+                    inTree = true;
+                }
+
+                if (inObject && currentObjectIsForestType && line.find("</tree>") != std::string::npos)
+                {
+                    inTree = false;
+                }
+
+                const bool parseForestTreePosition = inObject && currentObjectIsForestType && inTree;
+                const bool parseTreeObjectPosition = inObject && currentObjectIsTreeLikeName && !objectPositionRead;
+
+                if ((parseForestTreePosition || parseTreeObjectPosition) && line.find("<position") != std::string::npos)
+                {
+                    float x = 0.0f;
+                    float y = 0.0f;
+                    const bool hasX = ExtractAttributeFloat(line, "x", x);
+                    const bool hasY = ExtractAttributeFloat(line, "y", y);
+
+                    if (hasX && hasY)
+                    {
+                        if (parsedTrees >= maxTreePoints)
+                        {
+                            errorMessage = "Tree XML contains more points than buffer size supports.";
+                            treeCount = parsedTrees;
+                            return false;
+                        }
+
+                        tree_points[parsedTrees].x = x;
+                        tree_points[parsedTrees].y = y;
+                        parsedTrees++;
+
+                        if (parseTreeObjectPosition)
+                        {
+                            objectPositionRead = true;
+                        }
+                    }
+                }
+
+                if (line.find("</object>") != std::string::npos)
+                {
+                    inObject = false;
+                    inTree = false;
+                    currentObjectIsForestType = false;
+                    currentObjectIsTreeLikeName = false;
+                    objectPositionRead = false;
+                }
+            }
+
+            if (parsedTrees == 0)
+            {
+                errorMessage = "No tree positions found in XML file: " + filePath;
+                treeCount = 0;
+                return false;
+            }
+
+            treeCount = parsedTrees;
+            errorMessage.clear();
+            return true;
         }
 
         int AddTreesToBuffer(const char *message, int Fromindex, size_t size, Point2D *tree_points)

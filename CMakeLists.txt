@@ -13,12 +13,16 @@ else()
 endif()
 
 find_package(Threads REQUIRED)
+find_package(PCL REQUIRED COMPONENTS io)
 
 include_directories(${GLFW_INCLUDE_DIR})
 include_directories(
     include 
     headers
 )
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 set(CMAKE_BUILD_TYPE "Debug")
 
@@ -51,4 +55,5 @@ target_link_libraries(MyOpenGLApp
     #ws2_32
     dl
     Threads::Threads
+    ${PCL_LIBRARIES}
 )

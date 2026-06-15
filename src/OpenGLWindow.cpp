@@ -1,4 +1,5 @@
 #include "OpenGLWindow.h"
+#include "ImGui/imgui.h"
 
 glm::mat4 proj;
 glm::mat4 view = glm::mat4(1.0f);
@@ -19,6 +20,16 @@ bool leftMouseButtonPressed = false;
 bool middleMouseButtonPressed = false;
 double lastX = 0.0;
 double lastY = 0.0;
+
+bool IsMouseCapturedByImGui()
+{
+    if (ImGui::GetCurrentContext() == nullptr)
+    {
+        return false;
+    }
+
+    return ImGui::GetIO().WantCaptureMouse;
+}
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
@@ -42,6 +53,13 @@ void initCamera()
 
 void cursorPositionCallback(GLFWwindow *window, double xpos, double ypos)
 {
+    if (IsMouseCapturedByImGui())
+    {
+        lastX = xpos;
+        lastY = ypos;
+        return;
+    }
+
     if (leftMouseButtonPressed)
     {
         // Calculate the change in mouse position
@@ -89,6 +107,12 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
     {
         if (action == GLFW_PRESS)
         {
+            if (IsMouseCapturedByImGui())
+            {
+                leftMouseButtonPressed = false;
+                return;
+            }
+
             leftMouseButtonPressed = true;
             glfwGetCursorPos(window, &lastX, &lastY);
         }
@@ -101,6 +125,12 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
     {
         if (action == GLFW_PRESS)
         {
+            if (IsMouseCapturedByImGui())
+            {
+                middleMouseButtonPressed = false;
+                return;
+            }
+
             middleMouseButtonPressed = true;
             glfwGetCursorPos(window, &lastX, &lastY);
         }
@@ -113,6 +143,11 @@ void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods)
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
 {
+    if (IsMouseCapturedByImGui())
+    {
+        return;
+    }
+
     float zoomSpeed = 0.1f;
     scale += yoffset * zoomSpeed; // Zoom in when scrolling up, zoom out when scrolling down
     scale = glm::clamp(scale, 0.1f, 10.0f); // Limit the scale between 0.1 and 10

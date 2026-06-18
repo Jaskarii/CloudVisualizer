@@ -66,6 +66,52 @@
                        lowered.find("fir") != std::string::npos ||
                        lowered.find("stump") != std::string::npos;
             }
+
+            bool ParseTreePointLines(std::istream &input, Point2D *tree_points, int maxTreePoints, int &parsedTrees)
+            {
+                parsedTrees = 0;
+                std::string line;
+
+                while (std::getline(input, line))
+                {
+                    if (line.empty())
+                    {
+                        continue;
+                    }
+
+                    if (line[0] == '#')
+                    {
+                        continue;
+                    }
+
+                    for (char &c : line)
+                    {
+                        if (c == ',' || c == ';' || c == '\t')
+                        {
+                            c = ' ';
+                        }
+                    }
+
+                    std::istringstream lineStream(line);
+                    float x = 0.0f;
+                    float y = 0.0f;
+                    if (!(lineStream >> x >> y))
+                    {
+                        continue;
+                    }
+
+                    if (parsedTrees >= maxTreePoints)
+                    {
+                        return false;
+                    }
+
+                    tree_points[parsedTrees].x = x;
+                    tree_points[parsedTrees].y = y;
+                    parsedTrees++;
+                }
+
+                return true;
+            }
         }
 
 
@@ -202,19 +248,34 @@
         {
             std::string loweredPath = ToLower(filePath);
             const bool isXml = loweredPath.size() >= 4 && loweredPath.substr(loweredPath.size() - 4) == ".xml";
-            if (!isXml)
+            std::ifstream input(filePath);
+            if (!input.is_open())
             {
-                errorMessage = "Tree file must be an XML file: " + filePath;
+                errorMessage = "Could not open tree file: " + filePath;
                 treeCount = 0;
                 return false;
             }
 
-            std::ifstream input(filePath);
-            if (!input.is_open())
+            if (!isXml)
             {
-                errorMessage = "Could not open tree XML file: " + filePath;
-                treeCount = 0;
-                return false;
+                int parsedTrees = 0;
+                if (!ParseTreePointLines(input, tree_points, maxTreePoints, parsedTrees))
+                {
+                    errorMessage = "Tree file contains more points than buffer size supports.";
+                    treeCount = parsedTrees;
+                    return false;
+                }
+
+                if (parsedTrees == 0)
+                {
+                    errorMessage = "No tree positions found in tree file: " + filePath;
+                    treeCount = 0;
+                    return false;
+                }
+
+                treeCount = parsedTrees;
+                errorMessage.clear();
+                return true;
             }
 
             bool inObject = false;

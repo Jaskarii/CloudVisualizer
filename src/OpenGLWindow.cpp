@@ -70,12 +70,22 @@ void cursorPositionCallback(GLFWwindow *window, double xpos, double ypos)
         lastX = xpos;
         lastY = ypos;
 
-        // Set sensitivity for rotation
-        float sensitivity = 0.01f;
+        bool shiftPressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ||
+                            glfwGetKey(window, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS;
 
-        // Perform rotation based on mouse movement
-        view = glm::rotate(view, (float)deltaX * sensitivity, glm::vec3(0.0f, 0.0f, 1.0f)); // Rotate around z-axis
-        view = glm::rotate(view, (float)deltaY * sensitivity, glm::vec3(0.0f, 1.0f, 0.0f)); // Rotate around x-axis
+        if (shiftPressed)
+        {
+            // Pan with Shift + left-drag.
+            float sensitivity = 0.02f;
+            view = glm::translate(view, glm::vec3((float)deltaX * sensitivity, -(float)deltaY * sensitivity, 0.0f));
+        }
+        else
+        {
+            // Rotate with left-drag.
+            float sensitivity = 0.01f;
+            view = glm::rotate(view, (float)deltaX * sensitivity, glm::vec3(0.0f, 0.0f, 1.0f)); // Rotate around z-axis
+            view = glm::rotate(view, (float)deltaY * sensitivity, glm::vec3(0.0f, 1.0f, 0.0f)); // Rotate around x-axis
+        }
 
         // Recalculate MVP matrix
         MVP = proj * view * model;

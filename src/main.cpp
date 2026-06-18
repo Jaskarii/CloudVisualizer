@@ -43,9 +43,9 @@ GridTreeDetector *gridTreeDetector = new GridTreeDetector(0.5f,0.2f,10);
 GridTreeDetector *gridTreeDetector2 = new GridTreeDetector(0.02f,0.0f,1);
 OctoTree *octTree = new OctoTree(-100, -100, -100, 100, 100, 100, 10, 10);
 QuadTree *quadTree = new QuadTree(-100, -100, 100, 100, 10, 10);
-Point3D *points = new Point3D[5000000];
-Point2D *tree_points = new Point2D[50000];
-Point2D *tree_points_raw = new Point2D[50000];
+Point3D *points = new Point3D[7000000];
+Point2D *tree_points = new Point2D[70000];
+Point2D *tree_points_raw = new Point2D[70000];
 CoordFrame *frame;
 
 VertexBuffer *vb;
@@ -159,7 +159,7 @@ int main()
 
     OpenGLWindow window(800, 600, "OpenGL Window");
 
-    vb = new VertexBuffer(points, 5000000 * sizeof(Point3D));
+    vb = new VertexBuffer(points, 7000000 * sizeof(Point3D));
     VertexBufferLayout layout;
     layout.PushFloat(3);
     layout.PushFloat(1);
@@ -167,7 +167,7 @@ int main()
     Vertexarray array = Vertexarray();
     array.AddBuffer(*vb, layout);
 
-    treeVB = new VertexBuffer(tree_points, 50000 * sizeof(Point2D));
+    treeVB = new VertexBuffer(tree_points, 70000 * sizeof(Point2D));
     Vertexarray tree_array = Vertexarray();
     VertexBufferLayout tree_layout;
     tree_layout.PushFloat(2u);
@@ -218,11 +218,11 @@ int main()
                 _treeCountTemp = 0;
                 ApplyTreeTransform(_treeCount);
                 updateTrees = true;
-                std::cout << "Loaded " << _treeCount << " trees from XML file: " << treeFileBuffer << std::endl;
+                std::cout << "Loaded " << _treeCount << " trees from file: " << treeFileBuffer << std::endl;
             }
             else
             {
-                std::cerr << "Tree XML load failed: " << errorMessage << std::endl;
+                std::cerr << "Tree file load failed: " << errorMessage << std::endl;
             }
         }
 
